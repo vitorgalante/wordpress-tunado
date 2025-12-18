@@ -1,0 +1,150 @@
+<!-- CSS da biblioteca intl-tel-input -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/css/intlTelInput.css">
+
+<!-- CSS Customizado -->
+<style>
+/* Container principal do intl-tel-input */
+.iti {
+    width: 100%;
+    display: block;
+    position: relative;
+}
+
+/* Container da bandeira e código do país */
+.iti__flag-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}
+
+/* Botão da bandeira */
+.iti__selected-flag {
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0 12px;
+    height: 100%;
+}
+
+/* Ajusta o input para não sobrepor a bandeira */
+.iti input,
+.iti input.jet-form__field {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Garante que o input tenha altura adequada */
+.iti input.jet-form__field.text-field {
+    min-height: 40px;
+    height: auto;
+}
+
+/* Dropdown de países */
+.iti__country-list {
+    width: 100%;
+    max-width: 300px;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+/* Estilo para o campo com erro */
+input.error {
+    border: 2px solid #e74c3c !important;
+}
+
+/* Código do país separado */
+.iti__selected-dial-code {
+    margin-left: 6px;
+    font-weight: 500;
+}
+
+/* Seta do dropdown */
+.iti__arrow {
+    margin-left: 6px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #555;
+}
+
+/* Responsivo para mobile */
+@media (max-width: 768px) {
+    .iti input,
+    .iti input.jet-form__field {
+        padding-left: 55px !important;
+        font-size: 16px; /* Evita zoom no iOS */
+    }
+}
+</style>
+
+<!-- JavaScript da biblioteca intl-tel-input -->
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
+
+<!-- Script de inicialização -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+
+        const phoneContainer = document.querySelector(
+            '.jet-form-field-container.phone-international'
+        );
+        if (!phoneContainer) return;
+
+        const pseudoInput = phoneContainer.querySelector(
+            'input[name="pseudo_telefone"]'
+        );
+        if (!pseudoInput) return;
+
+        const form = pseudoInput.closest('form');
+        if (!form) return;
+
+        const realInput = form.querySelector(
+            'input[name="telefone"]'
+        );
+        if (!realInput) return;
+
+        const iti = window.intlTelInput(pseudoInput, {
+            initialCountry: "br",
+            preferredCountries: ["br", "us", "pt"],
+            separateDialCode: true,
+            autoPlaceholder: "aggressive",
+            formatOnDisplay: true,
+            nationalMode: false,
+            strictMode: true,
+            utilsScript:
+                "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js",
+        });
+
+        function syncTelefoneReal() {
+            if (!iti.isValidNumber()) {
+                realInput.value = '';
+                return;
+            }
+
+            realInput.value = iti.getNumber();
+        }
+
+        pseudoInput.addEventListener('input', syncTelefoneReal);
+        pseudoInput.addEventListener('countrychange', syncTelefoneReal);
+
+        form.addEventListener('submit', function (e) {
+            if (!iti.isValidNumber()) {
+                e.preventDefault();
+                e.stopPropagation();
+                pseudoInput.classList.add('error');
+                alert('Por favor, insira um número de telefone válido.');
+                return false;
+            }
+
+            syncTelefoneReal();
+        });
+
+        pseudoInput.addEventListener('input', function () {
+            pseudoInput.classList.remove('error');
+        });
+
+    }, 800);
+});
+</script>
