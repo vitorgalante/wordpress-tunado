@@ -36,8 +36,6 @@
     let trafficCategory = 'Indefinido';
     let isDirectTraffic = false;
     
-    // Verifica se é Tráfego Direto ANTES de normalizar completamente
-    // Checa especificamente os valores dos cookies
     const cookieMedium = getCookie('sz_medium');
     const cookieSource = getCookie('sz_source');
     
@@ -46,52 +44,43 @@
       const rawSource = cookieSource.trim().toLowerCase();
       
       if (rawMedium === '(none)' && rawSource === '(direct)') {
-        // Retorna APENAS "Tráfego Direto" sem source
         return 'Tráfego Direto';
       }
     }
     
-    // Verifica tráfego direto por URL params ou valores vazios
-    if ((!mediumValue || mediumValue === '' || mediumValue === '(none)' || mediumValue === '(not set)') && 
-        (!sourceValue || sourceValue === '' || sourceValue === 'direct' || sourceValue === '(direct)')) {
+    if (
+      (!mediumValue || mediumValue === '' || mediumValue === '(none)' || mediumValue === '(not set)') && 
+      (!sourceValue || sourceValue === '' || sourceValue === 'direct' || sourceValue === '(direct)')
+    ) {
       trafficCategory = 'Tráfego Direto';
       isDirectTraffic = true;
     }
-    // Mídia Paga
     else if (['cpc', 'ppc', 'paidsearch'].includes(mediumValue)) {
       trafficCategory = 'Mídia Paga';
     }
-    // Busca Orgânica
     else if (mediumValue === 'organic') {
       trafficCategory = 'Busca Orgânica';
     }
-    // Email
     else if (['email', 'e-mail'].includes(mediumValue)) {
       trafficCategory = 'Email';
     }
-    // Referência
     else if (mediumValue === 'referral') {
       trafficCategory = 'Referência';
     }
-    // Social
     else if (['social', 'social-network', 'social-media', 'sm', 'social network', 'social media'].includes(mediumValue)) {
       trafficCategory = 'Social';
     }
-    // Display
     else if (['display', 'cpm', 'banner'].includes(mediumValue)) {
       trafficCategory = 'Display';
     }
-    // Outras Publicidades
     else if (['cpv', 'cpa', 'cpp', 'content-text'].includes(mediumValue)) {
       trafficCategory = 'Outras Publicidades';
     }
     
-    // Se for tráfego direto, retorna apenas a categoria
     if (isDirectTraffic) {
       return 'Tráfego Direto';
     }
     
-    // Para outros tipos, adiciona a fonte
     const formattedSource = sourceValue ? capitalizeFirst(sourceValue) : 'Desconhecido';
     return `${trafficCategory} | ${formattedSource}`;
   }
@@ -100,10 +89,8 @@
   function fillField(field, value) {
     if (!field) return false;
     
-    // Preenche SEMPRE, mesmo se já tiver valor
     field.value = value;
     
-    // Dispara eventos para garantir que frameworks detectem a mudança
     field.dispatchEvent(new Event('input', { bubbles: true }));
     field.dispatchEvent(new Event('change', { bubbles: true }));
     field.dispatchEvent(new Event('blur', { bubbles: true }));
@@ -120,7 +107,6 @@
     
     let filledCount = 0;
     
-    // Busca por name
     fieldNames.forEach(name => {
       const fields = document.querySelectorAll(`[name="${name}"]`);
       fields.forEach(field => {
@@ -130,7 +116,6 @@
       });
     });
     
-    // Busca por id também (alguns formulários usam id)
     fieldNames.forEach(name => {
       const fields = document.querySelectorAll(`[id="${name}"]`);
       fields.forEach(field => {
@@ -140,7 +125,6 @@
       });
     });
     
-    // Busca por data-attributes comuns
     const dataAttrs = ['data-field', 'data-name', 'data-field-name'];
     dataAttrs.forEach(attr => {
       fieldNames.forEach(name => {
@@ -153,27 +137,23 @@
       });
     });
     
-    if (filledCount > 0) {
-      console.log(`✓ ${filledCount} campo(s) de origem preenchido(s):`, value);
-    }
-    
     return filledCount;
   }
   
   // --- [5] Observer para detectar novos elementos (pop-ups) ---
   function startObserver(value) {
     const observer = new MutationObserver((mutations) => {
-      // Verifica se algum formulário ou campo foi adicionado
       let shouldCheck = false;
       
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1) { // Element node
-            // Verifica se é um formulário ou contém formulários
-            if (node.tagName === 'FORM' || 
-                node.tagName === 'INPUT' || 
-                node.querySelector('form') || 
-                node.querySelector('input')) {
+          if (node.nodeType === 1) {
+            if (
+              node.tagName === 'FORM' || 
+              node.tagName === 'INPUT' || 
+              node.querySelector('form') || 
+              node.querySelector('input')
+            ) {
               shouldCheck = true;
             }
           }
@@ -181,18 +161,14 @@
       });
       
       if (shouldCheck) {
-        // Pequeno delay para garantir que o DOM está pronto
         setTimeout(() => fillAllFields(value), 100);
       }
     });
     
-    // Observa todo o body
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
-    
-    console.log('✓ Observer iniciado - monitorando pop-ups');
     
     return observer;
   }
@@ -207,31 +183,22 @@
   // --- [7] Inicialização ---
   function init() {
     const trafficValue = buildTrafficString();
-    console.log('Traffic Source:', trafficValue);
     
-    // Preenche campos existentes imediatamente
     fillAllFields(trafficValue);
-    
-    // Inicia observer para novos elementos
     startObserver(trafficValue);
-    
-    // Verificação periódica como backup (a cada 500ms)
     startPeriodicCheck(trafficValue, 500);
     
-    // Também verifica quando há interação do usuário
     document.addEventListener('click', () => {
       setTimeout(() => fillAllFields(trafficValue), 200);
     }, true);
   }
   
-  // Executa assim que possível
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
   
-  // Backup adicional no load completo
   window.addEventListener('load', () => {
     setTimeout(init, 500);
   });
