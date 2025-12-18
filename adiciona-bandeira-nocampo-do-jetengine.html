@@ -83,18 +83,14 @@ input.error {
 
 <!-- Script de inicialização -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
+(function () {
 
-        const phoneContainer = document.querySelector(
-            '.jet-form-field-container.phone-international'
-        );
-        if (!phoneContainer) return;
+    function initContainer(container) {
 
-        const pseudoInput = phoneContainer.querySelector(
+        const pseudoInput = container.querySelector(
             'input[name="pseudo_telefone"]'
         );
-        if (!pseudoInput) return;
+        if (!pseudoInput || pseudoInput.dataset.intlInitialized) return;
 
         const form = pseudoInput.closest('form');
         if (!form) return;
@@ -103,6 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'input[name="telefone"]'
         );
         if (!realInput) return;
+
+        pseudoInput.dataset.intlInitialized = 'true';
 
         const iti = window.intlTelInput(pseudoInput, {
             initialCountry: "br",
@@ -116,17 +114,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js",
         });
 
-        function syncTelefoneReal() {
+        function syncTelefone() {
             if (!iti.isValidNumber()) {
                 realInput.value = '';
                 return;
             }
-
             realInput.value = iti.getNumber();
         }
 
-        pseudoInput.addEventListener('input', syncTelefoneReal);
-        pseudoInput.addEventListener('countrychange', syncTelefoneReal);
+        pseudoInput.addEventListener('input', syncTelefone);
+        pseudoInput.addEventListener('countrychange', syncTelefone);
 
         form.addEventListener('submit', function (e) {
             if (!iti.isValidNumber()) {
@@ -136,14 +133,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Por favor, insira um número de telefone válido.');
                 return false;
             }
-
-            syncTelefoneReal();
+            syncTelefone();
         });
 
         pseudoInput.addEventListener('input', function () {
             pseudoInput.classList.remove('error');
         });
+    }
 
-    }, 800);
-});
+    function scanAndInit(root) {
+        const containers = root.querySelectorAll(
+            '.jet-form-field-container.phone-international'
+        );
+        containers.forEach(initContainer);
+    }
+
+    // 🔍 inicializa o que já existir
+    document.addEventListener('DOMContentLoaded', function () {
+        scanAndInit(document);
+    });
+
+    // 👁 observa mudanças no DOM (ESSENCIAL)
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType !== 1) return;
+
+                if (node.matches && node.matches('.jet-form-field-container.phone-international')) {
+                    initContainer(node);
+                } else if (node.querySelectorAll) {
+                    scanAndInit(node);
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+})();
 </script>
+
