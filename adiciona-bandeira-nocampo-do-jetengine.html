@@ -46,13 +46,18 @@ input.error {
     );
 
     $containers.each(function () {
-      const input = $(this).find('input[name="pseudo_telefone"]')[0];
+      const $wrapper = $(this);
+      const input = $wrapper.find('input[name="pseudo_telefone"]')[0];
+
       if (!input) return;
 
-      if (input.dataset.intlInitialized === "true") return;
+      if (input.dataset.intlInitialized === "true") {
+        return;
+      }
 
       const $form = $(input).closest("form");
       const realInput = $form.find('input[name="telefone"]')[0];
+
       if (!realInput) return;
 
       input.dataset.intlInitialized = "true";
@@ -100,7 +105,7 @@ input.error {
     initIntl(document);
   });
 
-  // Formulários em popup Elementor
+  // Formulários dentro de popup Elementor
   $(window).on("elementor/popup/show", function (event, id) {
     const $popup = $("#elementor-popup-modal-" + id);
     if (!$popup.length) return;
@@ -111,6 +116,7 @@ input.error {
   });
 })(jQuery);
 </script>
+
 
 
 
