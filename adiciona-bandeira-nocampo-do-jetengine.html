@@ -3,14 +3,12 @@
 
 <!-- CSS Customizado -->
 <style>
-/* Container principal do intl-tel-input */
 .iti {
     width: 100%;
     display: block;
     position: relative;
 }
 
-/* Container da bandeira e código do país */
 .iti__flag-container {
     position: absolute;
     top: 0;
@@ -19,7 +17,6 @@
     z-index: 2;
 }
 
-/* Botão da bandeira */
 .iti__selected-flag {
     display: flex;
     align-items: center;
@@ -27,152 +24,154 @@
     height: 100%;
 }
 
-/* Ajusta o input para não sobrepor a bandeira */
 .iti input,
 .iti input.jet-form__field {
     width: 100% !important;
     box-sizing: border-box !important;
 }
 
-/* Garante que o input tenha altura adequada */
+
 .iti input.jet-form__field.text-field {
     min-height: 40px;
     height: auto;
 }
 
-/* Dropdown de países */
 .iti__country-list {
-    width: 100%;
-    max-width: 300px;
-    z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    margin-top: 4px;
+    width: 100%!important;
+    max-width: 300px!important;
+    z-index: 999999!important;
 }
 
-/* Estilo para o campo com erro */
 input.error {
     border: 2px solid #e74c3c !important;
 }
 
-/* Código do país separado */
 .iti__selected-dial-code {
     margin-left: 6px;
     font-weight: 500;
 }
 
-/* Seta do dropdown */
 .iti__arrow {
     margin-left: 6px;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 4px solid #555;
 }
 
-/* Responsivo para mobile */
 @media (max-width: 768px) {
     .iti input,
     .iti input.jet-form__field {
-        font-size: 16px; /* Evita zoom no iOS */
+        font-size: 16px;
     }
 }
 </style>
-
-<!-- JavaScript da biblioteca intl-tel-input -->
+<!-- JS intl-tel-input -->
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
 
-<!-- Script de inicialização -->
 <script>
-(function () {
+(function ($) {
+  if (typeof window.intlTelInput === "undefined") {
+    console.error("[intl-tel-input] Biblioteca não carregada");
+    return;
+  }
 
-    function initContainer(container) {
+  console.log("[intl-tel-input] Script carregado");
 
-        const pseudoInput = container.querySelector(
-            'input[name="pseudo_telefone"]'
-        );
-        if (!pseudoInput || pseudoInput.dataset.intlInitialized) return;
+  function initIntl(container) {
+    const $containers = $(container).find(
+      ".jet-form-field-container.phone-international"
+    );
 
-        const form = pseudoInput.closest('form');
-        if (!form) return;
+    $containers.each(function () {
+      const $wrapper = $(this);
+      const input = $wrapper.find('input[name="pseudo_telefone"]')[0];
 
-        const realInput = form.querySelector(
-            'input[name="telefone"]'
-        );
-        if (!realInput) return;
+      if (!input) {
+        console.warn("[intl-tel-input] pseudo_telefone não encontrado");
+        return;
+      }
 
-        pseudoInput.dataset.intlInitialized = 'true';
+      if (input.dataset.intlInitialized === "true") {
+        return;
+      }
 
-        const iti = window.intlTelInput(pseudoInput, {
-            initialCountry: "br",
-            preferredCountries: ["br", "us", "pt"],
-            separateDialCode: true,
-            autoPlaceholder: "aggressive",
-            formatOnDisplay: true,
-            nationalMode: false,
-            strictMode: true,
-            utilsScript:
-                "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js",
-        });
+      const $form = $(input).closest("form");
+      const realInput = $form.find('input[name="telefone"]')[0];
 
-        function syncTelefone() {
-            if (!iti.isValidNumber()) {
-                realInput.value = '';
-                return;
-            }
-            realInput.value = iti.getNumber();
+      if (!realInput) {
+        console.warn("[intl-tel-input] campo telefone real não encontrado");
+        return;
+      }
+
+      console.log(
+        "[intl-tel-input] Inicializando",
+        input,
+        "em",
+        container
+      );
+
+      input.dataset.intlInitialized = "true";
+
+      const iti = window.intlTelInput(input, {
+        initialCountry: "br",
+        preferredCountries: ["br", "us", "pt"],
+        separateDialCode: true,
+        nationalMode: false,
+        formatOnDisplay: true,
+        autoPlaceholder: "aggressive",
+        strictMode: true,
+        utilsScript:
+          "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js",
+      });
+
+      function syncTelefone() {
+        if (!iti.isValidNumber()) {
+          realInput.value = "";
+          return;
         }
+        realInput.value = iti.getNumber();
+      }
 
-        pseudoInput.addEventListener('input', syncTelefone);
-        pseudoInput.addEventListener('countrychange', syncTelefone);
+      input.addEventListener("input", syncTelefone);
+      input.addEventListener("countrychange", syncTelefone);
 
-        form.addEventListener('submit', function (e) {
-            if (!iti.isValidNumber()) {
-                e.preventDefault();
-                e.stopPropagation();
-                pseudoInput.classList.add('error');
-                alert('Por favor, insira um número de telefone válido.');
-                return false;
-            }
-            syncTelefone();
-        });
+      $form.on("submit", function (e) {
+        if (!iti.isValidNumber()) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          input.classList.add("error");
+          alert("Por favor, insira um telefone válido.");
+        }
+      });
 
-        pseudoInput.addEventListener('input', function () {
-            pseudoInput.classList.remove('error');
-        });
+      input.addEventListener("input", function () {
+        input.classList.remove("error");
+      });
+    });
+  }
+
+  // DOM normal
+  $(document).ready(function () {
+    console.log("[intl-tel-input] DOM pronto");
+    initIntl(document);
+  });
+
+  // Elementor popup
+  $(window).on("elementor/popup/show", function (event, id) {
+    console.log("[intl-tel-input] Popup aberto:", id);
+
+    const $popup = $("#elementor-popup-modal-" + id);
+
+    if (!$popup.length) {
+      console.warn("[intl-tel-input] Popup não encontrado");
+      return;
     }
 
-    function scanAndInit(root) {
-        const containers = root.querySelectorAll(
-            '.jet-form-field-container.phone-international'
-        );
-        containers.forEach(initContainer);
-    }
-
-    // 🔍 inicializa o que já existir
-    document.addEventListener('DOMContentLoaded', function () {
-        scanAndInit(document);
-    });
-
-    // 👁 observa mudanças no DOM (ESSENCIAL)
-    const observer = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-                if (node.nodeType !== 1) return;
-
-                if (node.matches && node.matches('.jet-form-field-container.phone-international')) {
-                    initContainer(node);
-                } else if (node.querySelectorAll) {
-                    scanAndInit(node);
-                }
-            });
-        });
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-})();
+    // Pequeno delay para o DOM estabilizar
+    setTimeout(function () {
+      initIntl($popup[0]);
+      console.log("[intl-tel-input] Init aplicado no popup:", id);
+    }, 50);
+  });
+})(jQuery);
 </script>
+
+
 
