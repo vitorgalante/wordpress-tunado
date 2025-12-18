@@ -1,0 +1,240 @@
+<script>
+(function() {
+  // --- [1] Funções auxiliares ---
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  }
+  
+  function getUrlParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+  }
+  
+  function capitalizeFirst(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+  
+  function normalizeValue(value) {
+    if (!value) return '';
+    const normalized = value.trim().toLowerCase();
+    if (['undefined', 'null'].includes(normalized)) {
+      return '';
+    }
+    return normalized;
+  }
+  
+  // --- [2] Função principal de leitura e formatação ---
+  function buildTrafficString() {
+    let utmMedium = getUrlParameter('utm_medium') || getCookie('sz_medium');
+    let utmSource = getUrlParameter('utm_source') || getCookie('sz_source');
+    
+    const mediumValue = normalizeValue(utmMedium);
+    const sourceValue = normalizeValue(utmSource);
+    
+    let trafficCategory = 'Indefinido';
+    let isDirectTraffic = false;
+    
+    // Verifica se é Tráfego Direto ANTES de normalizar completamente
+    // Checa especificamente os valores dos cookies
+    const cookieMedium = getCookie('sz_medium');
+    const cookieSource = getCookie('sz_source');
+    
+    if (cookieMedium && cookieSource) {
+      const rawMedium = cookieMedium.trim().toLowerCase();
+      const rawSource = cookieSource.trim().toLowerCase();
+      
+      if (rawMedium === '(none)' && rawSource === '(direct)') {
+        // Retorna APENAS "Tráfego Direto" sem source
+        return 'Tráfego Direto';
+      }
+    }
+    
+    // Verifica tráfego direto por URL params ou valores vazios
+    if ((!mediumValue || mediumValue === '' || mediumValue === '(none)' || mediumValue === '(not set)') && 
+        (!sourceValue || sourceValue === '' || sourceValue === 'direct' || sourceValue === '(direct)')) {
+      trafficCategory = 'Tráfego Direto';
+      isDirectTraffic = true;
+    }
+    // Mídia Paga
+    else if (['cpc', 'ppc', 'paidsearch'].includes(mediumValue)) {
+      trafficCategory = 'Mídia Paga';
+    }
+    // Busca Orgânica
+    else if (mediumValue === 'organic') {
+      trafficCategory = 'Busca Orgânica';
+    }
+    // Email
+    else if (['email', 'e-mail'].includes(mediumValue)) {
+      trafficCategory = 'Email';
+    }
+    // Referência
+    else if (mediumValue === 'referral') {
+      trafficCategory = 'Referência';
+    }
+    // Social
+    else if (['social', 'social-network', 'social-media', 'sm', 'social network', 'social media'].includes(mediumValue)) {
+      trafficCategory = 'Social';
+    }
+    // Display
+    else if (['display', 'cpm', 'banner'].includes(mediumValue)) {
+      trafficCategory = 'Display';
+    }
+    // Outras Publicidades
+    else if (['cpv', 'cpa', 'cpp', 'content-text'].includes(mediumValue)) {
+      trafficCategory = 'Outras Publicidades';
+    }
+    
+    // Se for tráfego direto, retorna apenas a categoria
+    if (isDirectTraffic) {
+      return 'Tráfego Direto';
+    }
+    
+    // Para outros tipos, adiciona a fonte
+    const formattedSource = sourceValue ? capitalizeFirst(sourceValue) : 'Desconhecido';
+    return `${trafficCategory} | ${formattedSource}`;
+  }
+  
+  // --- [3] Função para preencher campo individual ---
+  function fillField(field, value) {
+    if (!field) return false;
+    
+    // Preenche SEMPRE, mesmo se já tiver valor
+    field.value = value;
+    
+    // Dispara eventos para garantir que frameworks detectem a mudança
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+    field.dispatchEvent(new Event('blur', { bubbles: true }));
+    
+    return true;
+  }
+  
+  // --- [4] Buscar e preencher TODOS os campos na página ---
+  function fillAllFields(value) {
+    const fieldNames = [
+      'origem_lead', 
+      'form_fields[origem_lead]'
+    ];
+    
+    let filledCount = 0;
+    
+    // Busca por name
+    fieldNames.forEach(name => {
+      const fields = document.querySelectorAll(`[name="${name}"]`);
+      fields.forEach(field => {
+        if (fillField(field, value)) {
+          filledCount++;
+        }
+      });
+    });
+    
+    // Busca por id também (alguns formulários usam id)
+    fieldNames.forEach(name => {
+      const fields = document.querySelectorAll(`[id="${name}"]`);
+      fields.forEach(field => {
+        if (fillField(field, value)) {
+          filledCount++;
+        }
+      });
+    });
+    
+    // Busca por data-attributes comuns
+    const dataAttrs = ['data-field', 'data-name', 'data-field-name'];
+    dataAttrs.forEach(attr => {
+      fieldNames.forEach(name => {
+        const fields = document.querySelectorAll(`[${attr}="${name}"]`);
+        fields.forEach(field => {
+          if (fillField(field, value)) {
+            filledCount++;
+          }
+        });
+      });
+    });
+    
+    if (filledCount > 0) {
+      console.log(`✓ ${filledCount} campo(s) de origem preenchido(s):`, value);
+    }
+    
+    return filledCount;
+  }
+  
+  // --- [5] Observer para detectar novos elementos (pop-ups) ---
+  function startObserver(value) {
+    const observer = new MutationObserver((mutations) => {
+      // Verifica se algum formulário ou campo foi adicionado
+      let shouldCheck = false;
+      
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) { // Element node
+            // Verifica se é um formulário ou contém formulários
+            if (node.tagName === 'FORM' || 
+                node.tagName === 'INPUT' || 
+                node.querySelector('form') || 
+                node.querySelector('input')) {
+              shouldCheck = true;
+            }
+          }
+        });
+      });
+      
+      if (shouldCheck) {
+        // Pequeno delay para garantir que o DOM está pronto
+        setTimeout(() => fillAllFields(value), 100);
+      }
+    });
+    
+    // Observa todo o body
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    
+    console.log('✓ Observer iniciado - monitorando pop-ups');
+    
+    return observer;
+  }
+  
+  // --- [6] Verificação periódica adicional ---
+  function startPeriodicCheck(value, interval = 500) {
+    return setInterval(() => {
+      fillAllFields(value);
+    }, interval);
+  }
+  
+  // --- [7] Inicialização ---
+  function init() {
+    const trafficValue = buildTrafficString();
+    console.log('Traffic Source:', trafficValue);
+    
+    // Preenche campos existentes imediatamente
+    fillAllFields(trafficValue);
+    
+    // Inicia observer para novos elementos
+    startObserver(trafficValue);
+    
+    // Verificação periódica como backup (a cada 500ms)
+    startPeriodicCheck(trafficValue, 500);
+    
+    // Também verifica quando há interação do usuário
+    document.addEventListener('click', () => {
+      setTimeout(() => fillAllFields(trafficValue), 200);
+    }, true);
+  }
+  
+  // Executa assim que possível
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  
+  // Backup adicional no load completo
+  window.addEventListener('load', () => {
+    setTimeout(init, 500);
+  });
+  
+})();
+</script>
