@@ -1,58 +1,27 @@
-<!-- CSS da biblioteca intl-tel-input -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/css/intlTelInput.css">
 
-<!-- CSS Customizado -->
 <style>
 .iti {
     width: 100%;
-    display: block;
     position: relative;
-}
-
-.iti__flag-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 2;
-}
-
-.iti__selected-flag {
-    display: flex;
-    align-items: center;
-    padding: 0 8px 0 12px;
-    height: 100%;
 }
 
 .iti input,
 .iti input.jet-form__field {
-    width: 100% !important;
-    box-sizing: border-box !important;
+    width: 100%;
+    box-sizing: border-box;
 }
-
 
 .iti input.jet-form__field.text-field {
     min-height: 40px;
-    height: auto;
 }
 
 .iti__country-list {
-    width: 100%!important;
-    max-width: 300px!important;
-    z-index: 999999!important;
+    max-width: 300px;
 }
 
 input.error {
     border: 2px solid #e74c3c !important;
-}
-
-.iti__selected-dial-code {
-    margin-left: 6px;
-    font-weight: 500;
-}
-
-.iti__arrow {
-    margin-left: 6px;
 }
 
 @media (max-width: 768px) {
@@ -62,17 +31,14 @@ input.error {
     }
 }
 </style>
-<!-- JS intl-tel-input -->
+
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
 
 <script>
 (function ($) {
   if (typeof window.intlTelInput === "undefined") {
-    console.error("[intl-tel-input] Biblioteca não carregada");
     return;
   }
-
-  console.log("[intl-tel-input] Script carregado");
 
   function initIntl(container) {
     const $containers = $(container).find(
@@ -80,32 +46,14 @@ input.error {
     );
 
     $containers.each(function () {
-      const $wrapper = $(this);
-      const input = $wrapper.find('input[name="pseudo_telefone"]')[0];
+      const input = $(this).find('input[name="pseudo_telefone"]')[0];
+      if (!input) return;
 
-      if (!input) {
-        console.warn("[intl-tel-input] pseudo_telefone não encontrado");
-        return;
-      }
-
-      if (input.dataset.intlInitialized === "true") {
-        return;
-      }
+      if (input.dataset.intlInitialized === "true") return;
 
       const $form = $(input).closest("form");
       const realInput = $form.find('input[name="telefone"]')[0];
-
-      if (!realInput) {
-        console.warn("[intl-tel-input] campo telefone real não encontrado");
-        return;
-      }
-
-      console.log(
-        "[intl-tel-input] Inicializando",
-        input,
-        "em",
-        container
-      );
+      if (!realInput) return;
 
       input.dataset.intlInitialized = "true";
 
@@ -147,31 +95,23 @@ input.error {
     });
   }
 
-  // DOM normal
+  // Formulários visíveis
   $(document).ready(function () {
-    console.log("[intl-tel-input] DOM pronto");
     initIntl(document);
   });
 
-  // Elementor popup
+  // Formulários em popup Elementor
   $(window).on("elementor/popup/show", function (event, id) {
-    console.log("[intl-tel-input] Popup aberto:", id);
-
     const $popup = $("#elementor-popup-modal-" + id);
+    if (!$popup.length) return;
 
-    if (!$popup.length) {
-      console.warn("[intl-tel-input] Popup não encontrado");
-      return;
-    }
-
-    // Pequeno delay para o DOM estabilizar
     setTimeout(function () {
       initIntl($popup[0]);
-      console.log("[intl-tel-input] Init aplicado no popup:", id);
     }, 50);
   });
 })(jQuery);
 </script>
+
 
 
 
