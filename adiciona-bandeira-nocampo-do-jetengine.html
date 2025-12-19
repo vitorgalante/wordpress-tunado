@@ -1,65 +1,46 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/css/intlTelInput.css">
 <style>
-.iti {
-    width: 100%;
-    position: relative;
-}
-.iti input,
-.iti input.jet-form__field {
-    width: 100%;
-    box-sizing: border-box;
-}
-.iti input.jet-form__field.text-field {
-    min-height: 40px;
-}
-.iti__country-list {
-    max-width: 300px;
-}
-input.error {
-    border: 2px solid #e74c3c !important;
-}
-@media (max-width: 768px) {
-    .iti input,
-    .iti input.jet-form__field {
-        font-size: 16px;
-    }
-}
+.iti { width: 100%; position: relative; }
+.iti input, .iti input.jet-form__field { width: 100%; box-sizing: border-box; }
+.iti input.jet-form__field.text-field { min-height: 40px; }
+.iti__country-list { max-width: 300px; }
+input.error { border: 2px solid #e74c3c !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
 <script>
 jQuery(document).ready(function($) {
+    var instances = {};
+    var counter = 0;
     
-    // Função para inicializar intlTelInput em um contexto específico
-    function initIntlTelInputInContext($context) {
-        console.log('🔍 Procurando campos em:', $context[0]);
+    function init(input, force) {
+        // Cria ID único para cada input
+        if (!input.dataset.itiId) {
+            input.dataset.itiId = 'iti_' + (++counter);
+        }
+        var id = input.dataset.itiId;
         
-        // Busca o input pelo name="pseudo_telefone"
-        $context.find('input[name="pseudo_telefone"]').each(function () {
-            var input = this;
-            
-            console.log('📱 Input encontrado:', input);
-            
-            // Verifica se já foi inicializado
-            if (input.classList.contains('iti-initialized')) {
-                console.log('⏭️ Já inicializado, pulando...');
-                return;
+        console.log('Init input ID:', id, 'Force:', force);
+        
+        if (force || !instances[id]) {
+            // Destroi instância antiga se existir
+            if (instances[id]) {
+                console.log('Destruindo instância:', id);
+                try {
+                    instances[id].destroy();
+                } catch(e) {}
+                delete instances[id];
             }
             
-            // Marca como inicializado
-            input.classList.add('iti-initialized');
-            
-            // Busca o input oculto "telefone"
             var $form = $(input).closest('form');
-            var realInput = $form.find('input[name="telefone"]')[0];
+            var hidden = $form.find('input[name="telefone"]')[0];
             
-            if (!realInput) {
-                console.warn('⚠️ Input oculto "telefone" não encontrado');
+            if (!hidden) {
+                console.warn('Campo oculto não encontrado para:', id);
                 return;
             }
             
-            console.log('✅ Input oculto encontrado:', realInput);
+            console.log('Criando nova instância:', id);
             
-            // Inicializa o intlTelInput
             var iti = window.intlTelInput(input, {
                 initialCountry: "br",
                 preferredCountries: ["br", "us", "pt"],
@@ -71,83 +52,71 @@ jQuery(document).ready(function($) {
                 utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js"
             });
             
-            console.log('✅ intlTelInput inicializado com sucesso!');
+            instances[id] = iti;
+            console.log('✅ Instância criada:', id);
             
-            // Função para sincronizar o telefone
-            function syncTelefone() {
+            function sync() {
                 if (iti.isValidNumber()) {
-                    realInput.value = iti.getNumber();
-                    console.log('📞 Telefone sincronizado:', realInput.value);
+                    hidden.value = iti.getNumber();
+                    console.log('📞 Sincronizado [' + id + ']:', hidden.value);
                 } else {
-                    realInput.value = '';
-                    console.log('❌ Telefone inválido, campo limpo');
+                    hidden.value = '';
+                    console.log('❌ Inválido [' + id + '], limpo');
                 }
             }
             
-            // Event listeners
-            input.addEventListener('input', function() {
-                syncTelefone();
-                input.classList.remove('error');
-            });
+            // Remove listeners antigos e adiciona novos
+            $(input).off('input.iti countrychange.iti');
+            $(input).on('input.iti', sync);
+            $(input).on('countrychange.iti', sync);
             
-            input.addEventListener('countrychange', function() {
-                console.log('🌍 País alterado');
-                syncTelefone();
-            });
-            
-            // Validação no submit
-            $form.off('submit.intlTel').on('submit.intlTel', function(e) {
-                console.log('📤 Tentando enviar formulário...');
+            // Submit com namespace único
+            $form.off('submit.iti_' + id).on('submit.iti_' + id, function(e) {
+                console.log('📤 Submit [' + id + ']');
                 
                 if (!iti.isValidNumber()) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     input.classList.add('error');
                     alert('Por favor, insira um telefone válido.');
-                    console.log('❌ Submit bloqueado - telefone inválido');
+                    console.log('❌ Bloqueado [' + id + ']');
                     return false;
                 }
                 
-                syncTelefone();
-                console.log('✅ Formulário válido, enviando...');
+                sync(); // Sincroniza antes de enviar
+                console.log('✅ Válido [' + id + '], valor final:', hidden.value);
             });
             
-            // Sincroniza inicialmente se já houver valor
+            // Sincroniza se já tiver valor
             if (input.value) {
-                syncTelefone();
+                setTimeout(sync, 100);
             }
-        });
+        } else {
+            console.log('⏭️ Instância já existe:', id);
+        }
     }
     
-    // Inicializa nos formulários da página principal
-    console.log('🚀 Inicializando formulários da página...');
-    initIntlTelInputInContext($(document));
-    
-    // Event listener para popups do Elementor
-    $(window).on('elementor/popup/show', function(event, id, instance) {
-        console.log('');
-        console.log('🎉 ========== POPUP ABERTO ==========');
-        console.log('ID:', id);
-        
-        // Pequeno delay para garantir que o DOM foi renderizado
-        setTimeout(function() {
-            var $popup = $('#elementor-popup-modal-' + id);
-            
-            if ($popup.length) {
-                console.log('✅ Popup encontrado, inicializando...');
-                initIntlTelInputInContext($popup);
-            } else {
-                console.warn('⚠️ Popup não encontrado com ID:', id);
-                // Tenta com qualquer popup visível
-                var $visiblePopup = $('.elementor-popup-modal:visible');
-                if ($visiblePopup.length) {
-                    console.log('✅ Usando popup visível');
-                    initIntlTelInputInContext($visiblePopup);
-                }
-            }
-        }, 200);
+    // Inicializa inputs VISÍVEIS da página
+    console.log('🚀 Inicializando página...');
+    $('input[name="pseudo_telefone"]:visible').each(function() {
+        init(this, false);
     });
     
-    console.log('✅ Script intlTelInput carregado e pronto!');
+    // Popup - FORÇA reinicialização
+    $(window).on('elementor/popup/show', function(event, id) {
+        console.log('🎉 Popup aberto:', id);
+        
+        setTimeout(function() {
+            console.log('Procurando inputs no popup...');
+            var $inputs = $('.elementor-popup-modal:visible input[name="pseudo_telefone"]');
+            console.log('Encontrados:', $inputs.length);
+            
+            $inputs.each(function() {
+                init(this, true); // FORÇA
+            });
+        }, 300);
+    });
+    
+    console.log('✅ Script pronto!');
 });
 </script>
