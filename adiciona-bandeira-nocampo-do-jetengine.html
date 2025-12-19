@@ -1,29 +1,23 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/css/intlTelInput.css">
-
 <style>
 .iti {
     width: 100%;
     position: relative;
 }
-
 .iti input,
 .iti input.jet-form__field {
     width: 100%;
     box-sizing: border-box;
 }
-
 .iti input.jet-form__field.text-field {
     min-height: 40px;
 }
-
 .iti__country-list {
     max-width: 300px;
 }
-
 input.error {
     border: 2px solid #e74c3c !important;
 }
-
 @media (max-width: 768px) {
     .iti input,
     .iti input.jet-form__field {
@@ -31,93 +25,129 @@ input.error {
     }
 }
 </style>
-
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
-
 <script>
-(function ($) {
-  if (typeof window.intlTelInput === "undefined") {
-    return;
-  }
-
-  function initIntl(container) {
-    const $containers = $(container).find(
-      ".jet-form-field-container.phone-international"
-    );
-
-    $containers.each(function () {
-      const $wrapper = $(this);
-      const input = $wrapper.find('input[name="pseudo_telefone"]')[0];
-
-      if (!input) return;
-
-      if (input.dataset.intlInitialized === "true") {
-        return;
-      }
-
-      const $form = $(input).closest("form");
-      const realInput = $form.find('input[name="telefone"]')[0];
-
-      if (!realInput) return;
-
-      input.dataset.intlInitialized = "true";
-
-      const iti = window.intlTelInput(input, {
-        initialCountry: "br",
-        preferredCountries: ["br", "us", "pt"],
-        separateDialCode: true,
-        nationalMode: false,
-        formatOnDisplay: true,
-        autoPlaceholder: "aggressive",
-        strictMode: true,
-        utilsScript:
-          "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js",
-      });
-
-      function syncTelefone() {
-        if (!iti.isValidNumber()) {
-          realInput.value = "";
-          return;
-        }
-        realInput.value = iti.getNumber();
-      }
-
-      input.addEventListener("input", syncTelefone);
-      input.addEventListener("countrychange", syncTelefone);
-
-      $form.on("submit", function (e) {
-        if (!iti.isValidNumber()) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          input.classList.add("error");
-          alert("Por favor, insira um telefone válido.");
-        }
-      });
-
-      input.addEventListener("input", function () {
-        input.classList.remove("error");
-      });
+jQuery(document).ready(function($) {
+    
+    // Função para inicializar intlTelInput em um contexto específico
+    function initIntlTelInputInContext($context) {
+        console.log('🔍 Procurando campos em:', $context[0]);
+        
+        // Busca o input pelo name="pseudo_telefone"
+        $context.find('input[name="pseudo_telefone"]').each(function () {
+            var input = this;
+            
+            console.log('📱 Input encontrado:', input);
+            
+            // Verifica se já foi inicializado
+            if (input.classList.contains('iti-initialized')) {
+                console.log('⏭️ Já inicializado, pulando...');
+                return;
+            }
+            
+            // Marca como inicializado
+            input.classList.add('iti-initialized');
+            
+            // Busca o input oculto "telefone"
+            var $form = $(input).closest('form');
+            var realInput = $form.find('input[name="telefone"]')[0];
+            
+            if (!realInput) {
+                console.warn('⚠️ Input oculto "telefone" não encontrado');
+                return;
+            }
+            
+            console.log('✅ Input oculto encontrado:', realInput);
+            
+            // Inicializa o intlTelInput
+            var iti = window.intlTelInput(input, {
+                initialCountry: "br",
+                preferredCountries: ["br", "us", "pt"],
+                separateDialCode: true,
+                nationalMode: false,
+                formatOnDisplay: true,
+                autoPlaceholder: "aggressive",
+                strictMode: true,
+                utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js"
+            });
+            
+            console.log('✅ intlTelInput inicializado com sucesso!');
+            
+            // Função para sincronizar o telefone
+            function syncTelefone() {
+                if (iti.isValidNumber()) {
+                    realInput.value = iti.getNumber();
+                    console.log('📞 Telefone sincronizado:', realInput.value);
+                } else {
+                    realInput.value = '';
+                    console.log('❌ Telefone inválido, campo limpo');
+                }
+            }
+            
+            // Event listeners
+            input.addEventListener('input', function() {
+                syncTelefone();
+                input.classList.remove('error');
+            });
+            
+            input.addEventListener('countrychange', function() {
+                console.log('🌍 País alterado');
+                syncTelefone();
+            });
+            
+            // Validação no submit
+            $form.off('submit.intlTel').on('submit.intlTel', function(e) {
+                console.log('📤 Tentando enviar formulário...');
+                
+                if (!iti.isValidNumber()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    input.classList.add('error');
+                    alert('Por favor, insira um telefone válido.');
+                    console.log('❌ Submit bloqueado - telefone inválido');
+                    return false;
+                }
+                
+                syncTelefone();
+                console.log('✅ Formulário válido, enviando...');
+            });
+            
+            // Sincroniza inicialmente se já houver valor
+            if (input.value) {
+                syncTelefone();
+            }
+        });
+    }
+    
+    // Inicializa nos formulários da página principal
+    console.log('🚀 Inicializando formulários da página...');
+    initIntlTelInputInContext($(document));
+    
+    // Event listener para popups do Elementor
+    $(window).on('elementor/popup/show', function(event, id, instance) {
+        console.log('');
+        console.log('🎉 ========== POPUP ABERTO ==========');
+        console.log('ID:', id);
+        
+        // Pequeno delay para garantir que o DOM foi renderizado
+        setTimeout(function() {
+            var $popup = $('#elementor-popup-modal-' + id);
+            
+            if ($popup.length) {
+                console.log('✅ Popup encontrado, inicializando...');
+                initIntlTelInputInContext($popup);
+            } else {
+                console.warn('⚠️ Popup não encontrado com ID:', id);
+                // Tenta com qualquer popup visível
+                var $visiblePopup = $('.elementor-popup-modal:visible');
+                if ($visiblePopup.length) {
+                    console.log('✅ Usando popup visível');
+                    initIntlTelInputInContext($visiblePopup);
+                }
+            }
+        }, 200);
     });
-  }
-
-  // Formulários visíveis
-  $(document).ready(function () {
-    initIntl(document);
-  });
-
-  // Formulários dentro de popup Elementor
-  $(window).on("elementor/popup/show", function (event, id) {
-    const $popup = $("#elementor-popup-modal-" + id);
-    if (!$popup.length) return;
-
-    setTimeout(function () {
-      initIntl($popup[0]);
-    }, 50);
-  });
-})(jQuery);
+    
+    console.log('✅ Script intlTelInput carregado e pronto!');
+});
 </script>
-
-
-
-
-
