@@ -1,0 +1,138 @@
+/* adiciona essa parte no style.css */
+
+/* Fix dropdown mobile em popup */
+.dialog-widget.elementor-popup-modal {
+    overflow: visible !important;
+}
+/* Fix z-index do popup para permitir dropdown aparecer */
+.elementor-popup-modal,
+.elementor-popup-modal .dialog-message,
+.elementor-popup-modal .dialog-widget-content,
+.elementor-popup-modal .elementor-element {
+    z-index: 999 !important;
+}
+
+/* Garante que o dropdown fique acima */
+.iti__country-list {
+    z-index: 10000 !important;
+}
+
+// Telefone Internacional - IntlTelInput
+function intl_telefone_fix() {
+  if (!is_admin()) {
+    ?>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/css/intlTelInput.css">
+    <style>
+    .iti { width: 100%; position: relative; }
+    .iti input, .iti input.jet-form__field { width: 100%; box-sizing: border-box; }
+    .iti input.jet-form__field.text-field { min-height: 40px; }
+    .iti__country-list { max-width: 300px; }
+    input.error { border: 2px solid #e74c3c !important; }
+    
+    /* CRÍTICO: Garante que bandeira seja clicável */
+    .iti__flag-container {
+        z-index: 10 !important;
+        position: relative !important;
+    }
+    
+    .iti__selected-flag {
+        cursor: pointer !important;
+        pointer-events: auto !important;
+    }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/intlTelInput.min.js"></script>
+    <script>
+    jQuery(document).ready(function($) {
+        var instances = {};
+        var counter = 0;
+        
+        function init(input, force) {
+            if (!input.dataset.itiId) {
+                input.dataset.itiId = 'iti_' + (++counter);
+            }
+            var id = input.dataset.itiId;
+            
+            if (force || !instances[id]) {
+                if (instances[id]) {
+                    try { instances[id].destroy(); } catch(e) {}
+                    delete instances[id];
+                }
+                
+                var $form = $(input).closest('form');
+                var hidden = $form.find('input[name="telefone"]')[0];
+                if (!hidden) return;
+                
+                var iti = window.intlTelInput(input, {
+                    initialCountry: "br",
+                    preferredCountries: ["br", "us", "pt"],
+                    separateDialCode: true,
+                    nationalMode: false,
+                    formatOnDisplay: true,
+                    autoPlaceholder: "aggressive",
+                    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.1/build/js/utils.js"
+                });
+                
+                instances[id] = iti;
+                
+                function sync() {
+                    hidden.value = iti.getNumber();
+                }
+                
+                $(input).off('.iti' + id);
+                $(input).on('input.iti' + id, sync);
+                $(input).on('countrychange.iti' + id, sync);
+                $(input).on('blur.iti' + id, sync);
+                
+                $form.off('submit.iti' + id).on('submit.iti' + id, function(e) {
+                    sync();
+                    if (typeof iti.isValidNumber === 'function') {
+                        if (!iti.isValidNumber() && input.value.length > 0) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            alert('Telefone inválido');
+                            return false;
+                        }
+                    }
+                });
+                
+                if (input.value) setTimeout(sync, 200);
+                
+                // FIX MOBILE: Força clique funcionar
+                setTimeout(function() {
+                    var $flag = $(input).siblings('.iti__flag-container').find('.iti__selected-flag');
+                    
+                    $flag.off('touchend.fix click.fix').on('touchend.fix click.fix', function(e) {
+                        e.stopPropagation();
+                        
+                        var $list = $(input).siblings('.iti__flag-container').find('.iti__country-list');
+                        var isHidden = $list.hasClass('iti__hide');
+                        
+                        if (isHidden) {
+                            $list.removeClass('iti__hide');
+                            $(this).attr('aria-expanded', 'true');
+                        } else {
+                            $list.addClass('iti__hide');
+                            $(this).attr('aria-expanded', 'false');
+                        }
+                    });
+                }, 500);
+            }
+        }
+        
+        $('input[name="pseudo_telefone"]:visible').each(function() {
+            init(this, false);
+        });
+        
+        $(window).on('elementor/popup/show', function() {
+            setTimeout(function() {
+                $('.elementor-popup-modal:visible input[name="pseudo_telefone"]').each(function() {
+                    init(this, true);
+                });
+            }, 500);
+        });
+    });
+    </script>
+    <?php
+  }
+}
+add_action('wp_head', 'intl_telefone_fix', 999);
